@@ -191,12 +191,3 @@ python manage.py collectstatic
 * Update `requirements/base.txt` when adding new dependencies
 
 ---
-
-If you want, I can also:
-
-* Add **Docker setup**
-* Convert this into **MkDocs or Sphinx docs**
-* Tailor it for **CI/CD pipelines**
-* Add **environment variable validation**
-
-Just say the word.
