@@ -58,11 +58,12 @@ urlpatterns = [
 
     # API routes
     path("api/v1/", include(router.urls)),
+    path("api/v1/auth/", include("apps.authentication.urls")),
 
     # JWT Auth
-    path("api/v1/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("api/v1/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    #path("api/v1/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    #path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    #path("api/v1/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
 
     # API Schema / Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

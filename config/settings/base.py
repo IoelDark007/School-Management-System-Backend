@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "health_check.db",
     "debug_toolbar",
     # Local
+    "apps.authentication",
     "apps.accounts",
     "apps.profiles",
     "apps.academic",

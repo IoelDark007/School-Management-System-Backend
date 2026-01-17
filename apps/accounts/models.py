@@ -1,34 +1,43 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+import uuid
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, email, username, password=None, role="student", **extra):
+    def create_user(self, email, password=None, role="student", **extra):
         if not email:
             raise ValueError("Email required")
-        user = self.model(email=self.normalize_email(email), username=username, role=role, **extra)
+        user = self.model(email=self.normalize_email(email), role=role, **extra)
         user.set_password(password)
-        user.save()
+        user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, username, password=None, **extra):
+    def create_superuser(self, email, password=None, **extra):
         extra.setdefault("is_staff", True)
         extra.setdefault("is_superuser", True)
-        return self.create_user(email, username, password, role="admin", **extra)
+        return self.create_user(email, password, role="admin", **extra)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
-        ADMIN = "admin"
-        #BURSAR = "bursar"
-        TEACHER = "teacher"
+        ADMIN = "admin", "Administrator"
+        PRINCIPAL = "principal", "Principal"
+        TEACHER = "teacher", "Teacher"
+        ACCOUNTANT = "accountant", "Accountant"
         STUDENT = "student"
         PARENT = "parent"
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    username = None
 
-    username = models.CharField(max_length=50, unique=True)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+
     email = models.EmailField(max_length=100, unique=True)
-    role = models.CharField(max_length=10, choices=Role.choices)
+    role = models.CharField(max_length=20, choices=Role.choices)
+    phone = models.CharField(max_length=20, blank=True)
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -39,7 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"]
+    #REQUIRED_FIELDS = ["username"]
 
     class Meta:
         db_table = "users"
