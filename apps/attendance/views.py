@@ -1,10 +1,296 @@
-from rest_framework import viewsets
-from apps.attendance.models import Attendance
-from apps.attendance.serializers import AttendanceSerializer
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Count, Q
+from datetime import datetime, timedelta
+from .models import Attendance
+from .serializers import AttendanceSerializer, BulkAttendanceSerializer, AttendanceReportSerializer
+from apps.accounts.permissions import CanManageStudents
+
 
 class AttendanceViewSet(viewsets.ModelViewSet):
-    queryset = Attendance.objects.all()
+    """ViewSet for Attendance management"""
+    
+    queryset = Attendance.objects.select_related('student', 'class_obj', 'marked_by').all()
     serializer_class = AttendanceSerializer
-    permission_classes = [IsAuthenticated]
-
+    permission_classes = [IsAuthenticated, CanManageStudents]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by student
+        student_id = self.request.query_params.get('student_id', None)
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        
+        # Filter by class
+        class_id = self.request.query_params.get('class_id', None)
+        if class_id:
+            queryset = queryset.filter(class_obj_id=class_id)
+        
+        # Filter by date
+        date = self.request.query_params.get('date', None)
+        if date:
+            queryset = queryset.filter(attendance_date=date)
+        
+        # Filter by date range
+        start_date = self.request.query_params.get('start_date', None)
+        end_date = self.request.query_params.get('end_date', None)
+        if start_date and end_date:
+            queryset = queryset.filter(attendance_date__range=[start_date, end_date])
+        
+        # Filter by status
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save(marked_by=self.request.user)
+    
+    @action(detail=False, methods=['post'])
+    def bulk_mark(self, request):
+        """Mark attendance for multiple students at once"""
+        serializer = BulkAttendanceSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        class_id = serializer.validated_data['class_id']
+        attendance_date = serializer.validated_data['attendance_date']
+        attendance_records = serializer.validated_data['attendance_records']
+        
+        created_records = []
+        updated_records = []
+        errors = []
+        
+        for record in attendance_records:
+            student_id = record['student_id']
+            status_value = record['status']
+            remarks = record.get('remarks', '')
+            
+            # Check if attendance already exists
+            attendance, created = Attendance.objects.update_or_create(
+                student_id=student_id,
+                attendance_date=attendance_date,
+                defaults={
+                    'class_obj_id': class_id,
+                    'status': status_value,
+                    'remarks': remarks,
+                    'marked_by': request.user
+                }
+            )
+            
+            if created:
+                created_records.append(attendance)
+            else:
+                updated_records.append(attendance)
+        
+        return Response({
+            'created': AttendanceSerializer(created_records, many=True).data,
+            'updated': AttendanceSerializer(updated_records, many=True).data,
+            'errors': errors
+        }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['get'])
+    def class_attendance(self, request):
+        """Get attendance for entire class on a specific date"""
+        class_id = request.query_params.get('class_id')
+        date = request.query_params.get('date', datetime.now().date())
+        
+        if not class_id:
+            return Response(
+                {'error': 'class_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all active students in the class
+        from apps.academic.models import Enrollment
+        enrollments = Enrollment.objects.filter(
+            class_obj_id=class_id,
+            status='active'
+        ).select_related('student')
+        
+        # Get attendance records for the date
+        attendance_records = Attendance.objects.filter(
+            class_obj_id=class_id,
+            attendance_date=date
+        )
+        
+        # Create a map of student_id to attendance
+        attendance_map = {
+            record.student_id: record for record in attendance_records
+        }
+        
+        # Build response
+        students_data = []
+        for enrollment in enrollments:
+            student = enrollment.student
+            attendance = attendance_map.get(student.id)
+            
+            students_data.append({
+                'student_id': student.id,
+                'student_name': student.full_name,
+                'admission_number': student.admission_number,
+                'roll_number': enrollment.roll_number,
+                'attendance': AttendanceSerializer(attendance).data if attendance else None
+            })
+        
+        return Response({
+            'class_id': class_id,
+            'date': date,
+            'total_students': len(students_data),
+            'marked': len(attendance_records),
+            'unmarked': len(students_data) - len(attendance_records),
+            'students': students_data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def student_report(self, request):
+        """Get attendance report for a student"""
+        student_id = request.query_params.get('student_id')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if not student_id:
+            return Response(
+                {'error': 'student_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Default to current month if dates not provided
+        if not start_date or not end_date:
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+        
+        # Get attendance records
+        attendance_records = Attendance.objects.filter(
+            student_id=student_id,
+            attendance_date__range=[start_date, end_date]
+        )
+        
+        # Calculate statistics
+        total_days = attendance_records.count()
+        present_days = attendance_records.filter(status='present').count()
+        absent_days = attendance_records.filter(status='absent').count()
+        late_days = attendance_records.filter(status='late').count()
+        excused_days = attendance_records.filter(status='excused').count()
+        
+        attendance_percentage = (present_days / total_days * 100) if total_days > 0 else 0
+        
+        from apps.students.models import Student
+        student = Student.objects.get(id=student_id)
+        
+        report_data = {
+            'student': student,
+            'total_days': total_days,
+            'present_days': present_days,
+            'absent_days': absent_days,
+            'late_days': late_days,
+            'excused_days': excused_days,
+            'attendance_percentage': round(attendance_percentage, 2)
+        }
+        
+        serializer = AttendanceReportSerializer(report_data)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def class_summary(self, request):
+        """Get attendance summary for a class"""
+        class_id = request.query_params.get('class_id')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if not class_id:
+            return Response(
+                {'error': 'class_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Default to current month if dates not provided
+        if not start_date or not end_date:
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+        
+        # Get all attendance records for the class in date range
+        attendance_records = Attendance.objects.filter(
+            class_obj_id=class_id,
+            attendance_date__range=[start_date, end_date]
+        )
+        
+        # Calculate statistics
+        total_records = attendance_records.count()
+        status_breakdown = attendance_records.values('status').annotate(count=Count('id'))
+        
+        # Get unique dates
+        unique_dates = attendance_records.values('attendance_date').distinct().count()
+        
+        return Response({
+            'class_id': class_id,
+            'start_date': start_date,
+            'end_date': end_date,
+            'total_days': unique_dates,
+            'total_records': total_records,
+            'status_breakdown': list(status_breakdown)
+        })
+    
+    @action(detail=False, methods=['get'])
+    def defaulters(self, request):
+        """Get list of students with low attendance"""
+        class_id = request.query_params.get('class_id')
+        threshold = float(request.query_params.get('threshold', 75))  # Default 75%
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        # Default to current month if dates not provided
+        if not start_date or not end_date:
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+        
+        # Get all students
+        from apps.academic.models import Enrollment
+        query = Enrollment.objects.filter(status='active').select_related('student')
+        
+        if class_id:
+            query = query.filter(class_obj_id=class_id)
+        
+        defaulters = []
+        
+        for enrollment in query:
+            student = enrollment.student
+            
+            # Get attendance records
+            attendance_records = Attendance.objects.filter(
+                student=student,
+                attendance_date__range=[start_date, end_date]
+            )
+            
+            total_days = attendance_records.count()
+            if total_days == 0:
+                continue
+            
+            present_days = attendance_records.filter(status='present').count()
+            attendance_percentage = (present_days / total_days * 100)
+            
+            if attendance_percentage < threshold:
+                defaulters.append({
+                    'student_id': student.id,
+                    'student_name': student.full_name,
+                    'admission_number': student.admission_number,
+                    'class': enrollment.class_obj.class_name,
+                    'total_days': total_days,
+                    'present_days': present_days,
+                    'attendance_percentage': round(attendance_percentage, 2)
+                })
+        
+        return Response({
+            'threshold': threshold,
+            'start_date': start_date,
+            'end_date': end_date,
+            'total_defaulters': len(defaulters),
+            'defaulters': defaulters
+        })
