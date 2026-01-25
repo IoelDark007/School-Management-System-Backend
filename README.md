@@ -85,15 +85,31 @@ The project requires **environment-specific variables**.
 ### Example `.env.development`
 
 ```env
-DEBUG=True
-SECRET_KEY=your-secret-key
-ALLOWED_HOSTS=127.0.0.1,localhost
+# Django Settings
+SECRET_KEY=your-secret-key-here-change-in-production
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+ENVIRONMENT=production
 
-DATABASE_NAME=db_name
-DATABASE_USER=db_user
-DATABASE_PASSWORD=db_password
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
+# Database
+DB_NAME=school_db
+DB_USER=school_user
+DB_PASSWORD=secure_password_here
+DB_HOST=db
+DB_PORT=3306
+DB_ROOT_PASSWORD=root_password_here
+
+# Security
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+CSRF_TRUSTED_ORIGINS=http://localhost:8000
+
+# Email (Optional)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
 ```
 
 > ⚠️ **Never commit `.env` files to version control.**
