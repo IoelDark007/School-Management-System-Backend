@@ -18,7 +18,8 @@ class Grade(models.Model):
         TERM_1 = '1', 'Term 1'
         TERM_2 = '2', 'Term 2'
         TERM_3 = '3', 'Term 3'
-    
+
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='grades')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='grades')
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='grades')

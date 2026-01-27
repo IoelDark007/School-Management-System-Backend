@@ -20,8 +20,8 @@ class Student(models.Model):
         SUSPENDED = 'suspended', 'Suspended'
         TRANSFERRED = 'transferred', 'Transferred'
         WITHDRAWN = 'withdrawn', 'Withdrawn'
-    
-    # No user_id field - students don't have login accounts
+
+
     admission_number = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -90,8 +90,7 @@ class Parent(models.Model):
         MOTHER = 'mother', 'Mother'
         GUARDIAN = 'guardian', 'Guardian'
         OTHER = 'other', 'Other'
-    
-    # No user_id field - parents don't have login accounts
+
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     

@@ -13,7 +13,7 @@ class Timetable(models.Model):
         THURSDAY = 'thursday', 'Thursday'
         FRIDAY = 'friday', 'Friday'
         SATURDAY = 'saturday', 'Saturday'
-    
+
     class_obj = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='timetable_entries')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='timetable_entries')
     teacher = models.ForeignKey(

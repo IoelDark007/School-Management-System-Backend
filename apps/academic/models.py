@@ -5,7 +5,8 @@ from apps.students.models import Student
 
 class AcademicYear(models.Model):
     """Academic year configuration"""
-    
+
+
     year_name = models.CharField(max_length=20, unique=True, help_text="e.g., '2024/2025'")
     start_date = models.DateField()
     end_date = models.DateField()
@@ -65,7 +66,6 @@ class Class(models.Model):
 
 class Subject(models.Model):
     """Subject/Course configuration"""
-    
     subject_name = models.CharField(max_length=100)
     subject_code = models.CharField(max_length=10, unique=True)
     description = models.TextField(blank=True)
@@ -95,6 +95,7 @@ class Enrollment(models.Model):
         COMPLETED = 'completed', 'Completed'
         WITHDRAWN = 'withdrawn', 'Withdrawn'
     
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='enrollments')
     class_obj = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='enrollments')
     enrollment_date = models.DateField(auto_now_add=True)
@@ -117,7 +118,7 @@ class Enrollment(models.Model):
 
 class SubjectAssignment(models.Model):
     """Which teacher teaches which subject to which class"""
-    
+
     class_obj = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='subject_assignments')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='class_assignments')
     teacher = models.ForeignKey(

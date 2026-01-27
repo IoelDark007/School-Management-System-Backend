@@ -13,6 +13,7 @@ class Attendance(models.Model):
         LATE = 'late', 'Late'
         EXCUSED = 'excused', 'Excused'
     
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendance_records')
     class_obj = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='attendance_records')
     attendance_date = models.DateField()

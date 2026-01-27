@@ -8,7 +8,7 @@ class User(AbstractUser):
     Custom User model for staff authentication only.
     Students and Parents do NOT have user accounts.
     """
-    
+
     class Role(models.TextChoices):
         ADMIN = 'admin', _('Admin')
         HEADMASTER = 'headmaster', _('Headmaster')

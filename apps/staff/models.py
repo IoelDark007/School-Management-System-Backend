@@ -20,12 +20,15 @@ class Staff(models.Model):
         MALE = 'male', 'Male'
         FEMALE = 'female', 'Female'
         OTHER = 'other', 'Other'
-    
+
+
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         related_name='staff_profile'
     )
+    
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -75,7 +78,9 @@ class Staff(models.Model):
 
 class SalaryStructure(models.Model):
     """Salary structure for staff members"""
+
     
+
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='salary_structures')
     base_salary = models.DecimalField(max_digits=12, decimal_places=2)
     housing_allowance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -115,7 +120,10 @@ class SalaryPayment(models.Model):
     class PaymentStatus(models.TextChoices):
         PENDING = 'pending', 'Pending'
         PAID = 'paid', 'Paid'
+
     
+    
+
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='salary_payments')
     payment_period = models.CharField(max_length=20, help_text="e.g., 'January 2025'")
     base_salary = models.DecimalField(max_digits=12, decimal_places=2)

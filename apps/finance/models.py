@@ -18,7 +18,7 @@ class FeeStructure(models.Model):
         TERM_2 = '2', 'Term 2'
         TERM_3 = '3', 'Term 3'
         ALL = 'all', 'All Terms'
-    
+ 
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='fee_structures')
     class_obj = models.ForeignKey(
         Class,
@@ -62,6 +62,7 @@ class Invoice(models.Model):
         TERM_2 = '2', 'Term 2'
         TERM_3 = '3', 'Term 3'
         ANNUAL = 'annual', 'Annual'
+
     
     invoice_number = models.CharField(max_length=50, unique=True)
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='invoices')
@@ -109,6 +110,8 @@ class Invoice(models.Model):
 
 class InvoiceItem(models.Model):
     """Line items in an invoice"""
+
+    
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
     fee_structure = models.ForeignKey(
         FeeStructure,
@@ -137,6 +140,7 @@ class Payment(models.Model):
         CARD = 'card', 'Card'
         MOBILE_MONEY = 'mobile_money', 'Mobile Money'
         CHEQUE = 'cheque', 'Cheque'
+
 
     payment_number = models.CharField(max_length=50, unique=True)
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments')
